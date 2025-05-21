@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Advanced Web Scraper</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.2.33/vue.global.min.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div id="app" class="container mx-auto px-4 py-8">
+        <div class="bg-white shadow-md rounded-lg p-6">
+            <h1 class="text-3xl font-bold mb-6 text-center text-blue-600">
+                Advanced Web Scraper
+            </h1>
+
+            <!-- URL Input Section -->
+            <div class="mb-4">
+                <label class="block text-gray-700 font-bold mb-2">
+                    URLs to Scrape (one per line)
+                </label>
+                <textarea 
+                    v-model="urlInput" 
+                    class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    rows="4" 
+                    placeholder="Enter URLs to scrape, one per line"
+                ></textarea>
+            </div>
+
+            <!-- Selector Configuration -->
+            <div class="mb-4">
+                <h2 class="text-xl font-semibold mb-3">Element Selectors</h2>
+                <div 
+                    v-for="(selector, index) in selectors" 
+                    :key="index" 
+                    class="bg-gray-50 p-4 rounded-lg mb-3"
+                >
+                    <div class="grid grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-gray-700">Parent Selector</label>
+                            <input 
+                                v-model="selector.parentSelector" 
+                                class="w-full px-2 py-1 border rounded"
+                                placeholder=".product-item"
+                            >
+                        </div>
+                        <div>
+                            <label class="block text-gray-700">Field Name</label>
+                            <input 
+                                v-model="selector.fieldName" 
+                                class="w-full px-2 py-1 border rounded"
+                                placeholder="title"
+                            >
+                        </div>
+                        <div>
+                            <label class="block text-gray-700">Field Selector</label>
+                            <input 
+                                v-model="selector.fieldSelector" 
+                                class="w-full px-2 py-1 border rounded"
+                                placeholder=".product-title"
+                            >
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <label class="inline-flex items-center">
+                            <input 
+                                type="checkbox" 
+                                v-model="selector.isAttribute"
+                                class="form-checkbox"
+                            >
+                            <span class="ml-2">Extract Attribute</span>
+                        </label>
+                        <input 
+                            v-if="selector.isAttribute"
+                            v-model="selector.attributeName"
+                            class="w-full px-2 py-1 border rounded mt-2"
+                            placeholder="href or src"
+                        >
+                    </div>
+                    <button 
+                        @click="removeSelector(index)" 
+                        class="mt-2 bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
+                    >
+                        Remove Selector
+                    </button>
+                </div>
+                <button 
+                    @click="addSelector" 
+                    class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                >
+                    Add Selector
+                </button>
+            </div>
+
+            <!-- Scraping Options -->
+            <div class="mb-4">
+                <h2 class="text-xl font-semibold mb-3">Scraping Options</h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gray-700">Max Retries</label>
+                        <input 
+                            v-model.number="maxRetries" 
+                            type="number" 
+                            class="w-full px-2 py-1 border rounded"
+                            min="1" 
+                            max="5"
+                        >
+                    </div>
+                    <div>
+                        <label class="block text-gray-700">Timeout (seconds)</label>
+                        <input 
+                            v-model.number="timeout" 
+                            type="number" 
+                            class="w-full px-2 py-1 border rounded"
+                            min="5" 
+                            max="30"
+                        >
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex justify-between mt-6">
+                <button 
+                    @click="startScraping" 
+                    class="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600 flex items-center"
+                >
+                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M3 5a2 2 0 012-2h10a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm11 1H6v8l4-2 4 2V6z" clip-rule="evenodd" />
+                    </svg>
+                    Start Scraping
+                </button>
+                <button 
+                    @click="exportData" 
+                    :disabled="!scrapedData.length"
+                    class="bg-purple-500 text-white px-6 py-2 rounded-lg hover:bg-purple-600 disabled:opacity-50"
+                >
+                    Export Data
+                </button>
+            </div>
+
+            <!-- Results Section -->
+            <div v-if="scrapedData.length" class="mt-6">
+                <h2 class="text-xl font-semibold mb-3">Scraped Results</h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full bg-white shadow-md rounded-lg">
+                        <thead class="bg-gray-200">
+                            <tr>
+                                <th v-for="key in Object.keys(scrapedData[0] || {})" 
+                                    class="px-4 py-2 text-left">
+                                    {{ key }}
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="(item, index) in scrapedData" :key="index" 
+                                class="border-b hover:bg-gray-100">
+                                <td v-for="key in Object.keys(item)" 
+                                    class="px-4 py-2">
+                                    {{ item[key] }}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref } = Vue;
+
+        createApp({
+            setup() {
+                const urlInput = ref('');
+                const selectors = ref([]);
+                const maxRetries = ref(3);
+                const timeout = ref(10);
+                const scrapedData = ref([]);
+
+                const addSelector = () => {
+                    selectors.value.push({
+                        parentSelector: '',
+                        fieldName: '',
+                        fieldSelector: '',
+                        isAttribute: false,
+                        attributeName: ''
+                    });
+                };
+
+                const removeSelector = (index) => {
+                    selectors.value.splice(index, 1);
+                };
+
+                const startScraping = () => {
+                    // Simulate scraping (would be replaced with actual backend call)
+                    const simulatedData = [
+                        { title: 'Sample Product 1', price: '$19.99', link: 'https://example.com/product1' },
+                        { title: 'Sample Product 2', price: '$29.99', link: 'https://example.com/product2' }
+                    ];
+                    scrapedData.value = simulatedData;
+                };
+
+                const exportData = () => {
+                    // Simulate data export
+                    const jsonData = JSON.stringify(scrapedData.value, null, 2);
+                    const blob = new Blob([jsonData], { type: 'application/json' });
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = 'scraped_data.json';
+                    link.click();
+                };
+
+                // Initial selector
+                addSelector();
+
+                return {
+                    urlInput,
+                    selectors,
+                    maxRetries,
+                    timeout,
+                    scrapedData,
+                    addSelector,
+                    removeSelector,
+                    startScraping,
+                    exportData
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
